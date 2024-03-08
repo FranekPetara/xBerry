@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgres://postgres:password@db:5432/db_name
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - SECRET_KEY
+      - DEBUG
+      - ALLOWED_HOSTS
+      - POSTGRES_HOST
+      - SHORT_URL
+    command: python manage.py runserver 0.0.0.0:8000
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./frontend:/app
+      - '/app/node_modules'
+    depends_on:
+      - backend
+    command: npm run serve
+
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+    volumes:
+      - postgresvolume:/var/lib/postgresql/data
+
+  redis:
+    image: redis
+
+  celery:
+    build:
+      context: ./backend
+    depends_on:
+      - redis
+      - backend
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=link_shortener_project.settings
+    command: celery -A link_shortener_project worker -l INFO
+
+volumes:
+  postgresvolume:
+
+
+
